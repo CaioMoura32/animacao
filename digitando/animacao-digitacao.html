@@ -1,0 +1,73 @@
+<div class="digitando">Texto que será digitado automaticamente</div>
+<div style="height: 100vh;"></div>
+<div class="digitando">Outro texto em outra div animado também</div>
+
+<style>
+  .digitando {
+    font-family: monospace;
+    white-space: pre;
+    overflow: hidden;
+    border-right: 6px solid #ff0000;
+    animation: blink-caret 0.3s step-end infinite;
+    display: inline-block;
+  }
+
+  .digitando.done {
+    border-right: none;
+    animation: none;
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: #ff0000; }
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const elements = document.querySelectorAll('.digitando');
+
+    elements.forEach(el => {
+      el.setAttribute('data-fulltext', el.textContent.trim());
+      el.textContent = '';
+      el._typingInterval = null;
+      el._isTyping = false;
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const el = entry.target;
+        const fullText = el.getAttribute('data-fulltext');
+
+        if (entry.isIntersecting) {
+          if (!el._isTyping) {
+            el.classList.remove('done');
+            el.textContent = '';
+            el._isTyping = true;
+            let i = 0;
+            const speed = 20;
+
+            el._typingInterval = setInterval(() => {
+              el.textContent = fullText.substring(0, i + 1);
+              i++;
+              if (i > fullText.length) {
+                clearInterval(el._typingInterval);
+                el.classList.add('done');
+                el._isTyping = false;
+              }
+            }, speed);
+          }
+        } else {
+          if (el._typingInterval) clearInterval(el._typingInterval);
+          el.textContent = '';
+          el.classList.remove('done');
+          el._isTyping = false;
+        }
+      });
+    }, {
+      threshold: 0.6
+    });
+
+    elements.forEach(el => observer.observe(el));
+  });
+</script>
