@@ -1,0 +1,95 @@
+.cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100px;
+    height: 100px;
+    background: #fff;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(50px);
+    /* transition: background 0.1s ease; */
+    z-index: 10;
+    right: 0px !important;
+}
+
+.container {
+    top: -20%;
+    position: absolute;
+    /* bottom: 0; */
+    /* margin: auto; */
+    right: 0;
+    height: 100vh;
+    width: 100vw;
+    transform: translateY(-50%);
+    perspective: 1000px;
+    display: flex;
+    justify-content: end;
+    z-index: 10;
+}
+
+.container .container-paleta {
+    right: 130%;
+    top: 27%;
+    margin-top: -700px;
+    margin-right: -500px;
+    bottom: 0;
+    /* pointer-events: none; */
+    position: inherit;
+    /* transition: 0.1s; */
+}
+
+.plate {
+    position: absolute;
+    width: 800px;
+    height: 800px;
+    background: linear-gradient(135deg, #111111a6, #d0095a);
+    opacity: 0.25;
+    border-radius: 10px;
+    transform-origin: center;
+    transition: transform 0.1s ease;
+    filter: blur(5px);
+    transform-style: preserve-3d;
+    z-index: var(--i);
+    transform:
+        rotate(-45deg) translateX(calc((var(--i) - 5) * 80px)) translateY(calc(var(--i) * 60px)) rotateX(calc((var(--i) - 6) * 3deg)) scale(calc(0.6 + var(--i) * 0.05));
+    transition: 0.5s;
+}
+
+.plate:nth-child(n) {
+    animation: flutuante 3s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 0.2s);
+}
+
+@keyframes flutuante {
+
+    0% {
+        margin-top: 0px;
+    }
+
+    50% {
+        margin-top: 20px;
+    }
+
+    100% {
+        margin-top: 0px;
+    }
+}
+
+@media(max-width: 1500px) {
+    .container {
+        right: -10%;
+    }
+}
+
+@media(max-width: 959px) {
+    .container {
+        top: 20%;
+        right: 150% !important;
+    }
+
+    .plate {
+        width: 600px;
+        height: 600px;
+    }
+}
