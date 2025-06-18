@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Plate Animation</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+    }
+    #three-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background: transparent;
+    }
+    canvas {
+      display: block;
+      filter: blur(1px);
+    }
+  </style>
+</head>
+<body>
+  <div id="three-container"></div>
+  <script type="module">
+    // import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+
+    const container = document.getElementById('three-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.9, 2000);
+    camera.position.set(500, 50, 1600);
+    camera.lookAt(0, 120, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    const light = new THREE.PointLight(0xffffff, 2.5);
+    light.position.set(100, 100, 300);
+    scene.add(light);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
+
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const plateGeometry = new THREE.PlaneGeometry(800, 800);
+    const plates = [];
+    const originalStates = [];
+    let assembling = true;
+
+    for (let i = 0; i < 15; i++) {
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xff5c96,
+        opacity: 0.12,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false
+      });
+
+      const plate = new THREE.Mesh(plateGeometry, material);
+      const posX = 1800 - i * 130;
+      const posY = -950 + i * 90;
+      plate.position.set(posX, posY + 1000, -3200); // start off-screen para animação de entrada
+      plate.rotation.z = -Math.PI / 1320;
+      plate.rotation.y = Math.PI / 10;
+      plate.scale.setScalar(1);
+      plate.renderOrder = i;
+      group.add(plate);
+      plates.push(plate);
+
+      originalStates.push({
+        x: posX,
+        y: posY,
+        rotX: 0,
+        rotY: Math.PI / 10,
+        delay: i * 150
+      });
+    }
+
+    let mouse = { x: -5, y: 0 };
+    const mouseVec = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
+
+    // Variáveis para movimento do grupo
+    let groupTargetX = 0;
+    let groupTargetY = 0;
+    let groupCurrentX = 0;
+    let groupCurrentY = 0;
+    let groupRotX = 0;
+    let groupRotY = 0;
+    let groupTargetRotX = 0;
+    let groupTargetRotY = 0;
+
+    document.addEventListener('mousemove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      groupTargetX = (event.clientX - window.innerWidth / 2) * 0.03;
+      groupTargetY = (event.clientY - window.innerHeight / 2) * 0.03;
+
+      groupTargetRotY = (event.clientX / window.innerWidth - 0.5) * 0.1;
+      groupTargetRotX = -(event.clientY / window.innerHeight - 0.5) * 0.1;
+    });
+
+    function animate(time) {
+      mouseVec.x = mouse.x;
+      mouseVec.y = mouse.y;
+      raycaster.setFromCamera(mouseVec, camera);
+      const intersects = raycaster.intersectObjects(plates);
+
+      // Movimento suave do grupo
+      groupCurrentX += (groupTargetX - groupCurrentX) * 0.05;
+      groupCurrentY += (groupTargetY - groupCurrentY) * 0.05;
+      group.position.set(groupCurrentX, groupCurrentY, 0);
+
+      groupRotX += (groupTargetRotX - groupRotX) * 0.05;
+      groupRotY += (groupTargetRotY - groupRotY) * 0.05;
+      group.rotation.set(groupRotX, groupRotY, 0);
+
+      plates.forEach((plate, i) => {
+        const original = originalStates[i];
+        const isHovered = intersects.some(obj => obj.object === plate);
+        const floatY = Math.sin(time * 0.001 + i * 0.5) * 10;
+
+        if (assembling && time < original.delay + 800) {
+          const progress = Math.min(1, (time - original.delay) / 800);
+          const eased = Math.pow(progress, 2);
+          plate.position.y = original.y + 1000 * (1 - eased);
+        } else {
+          if (assembling) plate.position.y = original.y;
+          assembling = false;
+
+          if (isHovered) {
+            plate.rotation.x += (0.5 - plate.rotation.x) * 0.1;
+            plate.rotation.y += (0.5 - plate.rotation.y) * 0.1;
+            plate.position.z += (100 - plate.position.z) * 0.1;
+          } else {
+            plate.rotation.x += (original.rotX - plate.rotation.x) * 0.1;
+            plate.rotation.y += (original.rotY - plate.rotation.y) * 0.1;
+            plate.position.z += (0 - plate.position.z) * 0.1;
+          }
+
+          plate.position.y = original.y + floatY;
+          plate.position.x = original.x;
+        }
+      });
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
