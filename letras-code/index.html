@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Texto Decriptado</title>
+  <style>
+    .decrypted-wrapper {
+      display: inline-block;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+    .encrypted {
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body style="height: 200vh; padding: 2rem;">
+  <h1 style="margin-bottom: 150vh;">Scroll para ver a animação</h1>
+
+  <div id="text1" class="decrypted-wrapper"
+       data-text="Texto secreto revelado"
+       data-speed="50"
+       data-reveal-direction="start"
+       data-original-chars="false">
+  </div>
+  <div id="text2" class="decrypted-wrapper"
+       data-text="Texto ola"
+       data-speed="50"
+       data-reveal-direction="start"
+       data-original-chars="false">
+  </div>
+
+  <script>
+    function decryptedText(el) {
+      const text = el.dataset.text || '';
+      const speed = parseInt(el.dataset.speed) || 50;
+      const revealDirection = el.dataset.revealDirection || 'start';
+      const useOriginalCharsOnly = el.dataset.originalChars === 'true';
+      const characters = el.dataset.characters || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+';
+
+      let displayText = text;
+      let revealedIndices = new Set();
+      let isScrambling = false;
+      let interval;
+
+      const availableChars = useOriginalCharsOnly
+        ? Array.from(new Set(text.split(''))).filter((c) => c !== ' ')
+        : characters.split('');
+
+      const shuffleText = () => {
+        return text.split('').map((char, i) => {
+          if (char === ' ' || revealedIndices.has(i)) return char;
+          return availableChars[Math.floor(Math.random() * availableChars.length)];
+        }).join('');
+      };
+
+      const getNextIndex = () => {
+        const len = text.length;
+        switch (revealDirection) {
+          case 'start':
+            return revealedIndices.size;
+          case 'end':
+            return len - 1 - revealedIndices.size;
+          case 'center':
+            const mid = Math.floor(len / 2);
+            const offset = Math.floor(revealedIndices.size / 2);
+            return revealedIndices.size % 2 === 0 ? mid + offset : mid - offset - 1;
+          default:
+            return revealedIndices.size;
+        }
+      };
+
+      const updateDisplay = () => {
+        el.innerHTML = '';
+        const srOnly = document.createElement('span');
+        srOnly.className = 'sr-only';
+        srOnly.textContent = displayText;
+        el.appendChild(srOnly);
+
+        const visible = document.createElement('span');
+        visible.setAttribute('aria-hidden', 'true');
+
+        displayText.split('').forEach((char, i) => {
+          const span = document.createElement('span');
+          span.textContent = char;
+          if (!revealedIndices.has(i) && isScrambling) {
+            span.className = 'encrypted';
+          }
+          visible.appendChild(span);
+        });
+
+        el.appendChild(visible);
+      };
+
+      const scramble = () => {
+        if (isScrambling) return;
+        isScrambling = true;
+        revealedIndices.clear();
+        clearInterval(interval);
+
+        interval = setInterval(() => {
+          if (revealedIndices.size < text.length) {
+            const next = getNextIndex();
+            revealedIndices.add(next);
+            displayText = shuffleText();
+            updateDisplay();
+          } else {
+            clearInterval(interval);
+            isScrambling = false;
+            displayText = text;
+            updateDisplay();
+          }
+        }, speed);
+      };
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            scramble();
+          }
+        });
+      }, { threshold: 0.1 });
+
+      observer.observe(el);
+      updateDisplay();
+    }
+
+    document.querySelectorAll('.decrypted-wrapper').forEach(decryptedText);
+  </script>
+</body>
+</html>

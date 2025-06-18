@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Texto Caindo com Física</title>
+    <style>
+        #falling-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
+            background: #fff;
+            border: 2px solid #ccc;
+        }
+
+        .word {
+            position: absolute;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #222;
+            pointer-events: none;
+            user-select: none;
+            transform: translate(-50%, -50%);
+            transform-origin: center;
+            white-space: nowrap;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            /* agora o canvas fica atrás */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="falling-container"></div>
+
+    <!-- Matter.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script>
+        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body, Vector, Events } = Matter;
+
+        const container = document.getElementById('falling-container');
+        const engine = Engine.create();
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const render = Render.create({
+            element: container,
+            engine: engine,
+            options: {
+                width,
+                height,
+                background: 'transparent',
+                wireframes: false,
+            }
+        });
+
+        const frase = "criação de sites site profissional site responsivo site rápido reformar site desenvolvimento web sites otimizados para SEO site moderno site personalizado empresa de criação de sites";
+        const palavras = frase.split(" ");
+        const wordBodies = [];
+
+        function medirSpan(texto) {
+            const temp = document.createElement("span");
+            temp.className = "word";
+            temp.style.visibility = "hidden";
+            temp.textContent = texto;
+            container.appendChild(temp);
+            const rect = temp.getBoundingClientRect();
+            container.removeChild(temp);
+            return { width: rect.width, height: rect.height };
+        }
+
+        palavras.forEach((word) => {
+            const size = medirSpan(word);
+            const span = document.createElement("span");
+            span.className = "word";
+            span.textContent = word;
+            container.appendChild(span);
+
+            const x = Math.random() * (width - size.width) + size.width / 2;
+            const y = Math.random() * 20;
+
+            const body = Bodies.rectangle(x, y, size.width, size.height, {
+                restitution: 0.9,
+                frictionAir: 0.02,
+                render: { visible: false } // 👈 impede os retângulos de aparecerem
+            });
+
+            body.html = span;
+            wordBodies.push(body);
+            Composite.add(engine.world, body);
+        });
+
+        // Paredes
+        const walls = [
+            Bodies.rectangle(width / 2, height + 25, width, 50, { isStatic: true }),
+            Bodies.rectangle(width / 2, -25, width, 50, { isStatic: true }),
+            Bodies.rectangle(-25, height / 2, 50, height, { isStatic: true }),
+            Bodies.rectangle(width + 25, height / 2, 50, height, { isStatic: true }),
+        ];
+        Composite.add(engine.world, walls);
+
+        // Mouse
+        let mousePos = { x: -1000, y: -1000 };
+        container.addEventListener("mousemove", (e) => {
+            const rect = container.getBoundingClientRect();
+            mousePos = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        });
+
+        const mouse = Mouse.create(render.canvas);
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: { visible: false }
+            }
+        });
+        Composite.add(engine.world, mouseConstraint);
+        render.mouse = mouse;
+
+        // Atualização
+        Events.on(engine, "afterUpdate", () => {
+            wordBodies.forEach((body) => {
+                const el = body.html;
+                const { x, y } = body.position;
+
+                // Atualiza posição visual
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                el.style.transform = `translate(-50%, -50%) rotate(${body.angle}rad)`;
+
+                // Repulsão
+                const dist = Vector.magnitude(Vector.sub(mousePos, body.position));
+                const repelRadius = 70;
+                if (dist < repelRadius) {
+                    const forceDirection = Vector.normalise(Vector.sub(body.position, mousePos));
+                    const strength = (1 - dist / repelRadius) * 0.0025;
+                    Body.applyForce(body, body.position, Vector.mult(forceDirection, strength));
+                }
+
+                // Reposicionar se saiu da tela (opcional)
+                if (x < -50 || x > width + 50 || y > height + 50) {
+                    Body.setPosition(body, {
+                        x: Math.random() * width,
+                        y: 0
+                    });
+                    Body.setVelocity(body, { x: 0, y: 0 });
+                }
+            });
+        });
+
+        Engine.run(engine);
+        Render.run(render);
+        Runner.run(Runner.create(), engine);
+    </script>
+</body>
+
+</html>
